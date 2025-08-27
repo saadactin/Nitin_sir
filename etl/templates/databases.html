@@ -1,22 +1,108 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Databases</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        h1 { color: #333; }
-        ul { list-style-type: none; padding: 0; }
-        li { margin: 8px 0; }
-        a { text-decoration: none; color: blue; font-weight: bold; }
-        a:hover { color: darkred; }
-    </style>
+  <meta charset="utf-8" />
+  <title>Migration Control - Databases</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/static/css/migration.css" rel="stylesheet">
 </head>
 <body>
-    <h1>Available Databases</h1>
-    <ul>
-        {% for db in databases %}
-        <li><a href="/database/{{ db }}">{{ db }}</a></li>
-        {% endfor %}
-    </ul>
+  <div class="d-flex">
+    <!-- Sidebar -->
+    <nav class="sidebar bg-dark text-white p-3">
+      <h2 class="h5 mb-4">⚡ Migration Control</h2>
+      <ul class="nav flex-column">
+        <li class="nav-item mb-2"><a href="/dashboard" class="nav-link text-white">📊 Dashboard</a></li>
+        <li class="nav-item mb-2"><a href="/" class="nav-link text-white">🏠 Home</a></li>
+        <li class="nav-item mb-2"><a href="/schedule" class="nav-link text-white">⏰ Schedule</a></li>
+      </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="content p-4 flex-grow-1">
+      <h1 class="mb-4">🗄️ Available Databases</h1>
+
+      <!-- Databases List -->
+      <div class="card shadow-sm">
+        <div class="card-header bg-secondary text-white">Databases</div>
+        <div class="card-body">
+          <ul class="list-group">
+            {% for db in databases %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <a href="{{ url_for('database_details', db_name=db) }}" class="text-decoration-none">
+                🗄️ {{ db }}
+              </a>
+              <div class="btn-group">
+                <button id="syncBtn-{{ db }}" class="btn btn-sm btn-primary" onclick="runSync('{{ db }}')">
+                  ▶ Run Sync
+                </button>
+                <a href="{{ url_for('schedule_page') }}?db={{ db }}" class="btn btn-sm btn-warning">
+                  ⏰ Schedule
+                </a>
+              </div>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+
+      <!-- Sync Output -->
+      <div class="card shadow-sm mt-4">
+        <div class="card-header bg-info text-white">Sync Output</div>
+        <div class="card-body">
+          <div id="statusBadge" class="mb-2"></div>
+
+          <label class="form-label">stdout</label>
+          <pre id="stdoutBox" class="output-box text-light bg-dark"></pre>
+
+          <label class="form-label mt-3">stderr</label>
+          <pre id="stderrBox" class="output-box text-warning bg-dark"></pre>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Script -->
+  <script>
+    async function runSync(dbName) {
+      const btn = document.getElementById(`syncBtn-${dbName}`);
+      const statusBadge = document.getElementById('statusBadge');
+      const stdoutBox = document.getElementById('stdoutBox');
+      const stderrBox = document.getElementById('stderrBox');
+
+      // Reset UI
+      statusBadge.innerHTML = '<span class="badge bg-secondary">Running…</span>';
+      stdoutBox.textContent = '';
+      stderrBox.textContent = '';
+
+      // Turn button red while syncing
+      btn.classList.remove('btn-primary', 'btn-outline-primary');
+      btn.classList.add('btn-danger');
+      btn.textContent = "⏳ Syncing...";
+
+      try {
+        const res = await fetch(`/run-sync/${encodeURIComponent(dbName)}`);
+        const data = await res.json();
+
+        if (data.status === 'success') {
+          statusBadge.innerHTML = '<span class="badge bg-success">Success</span>';
+        } else {
+          statusBadge.innerHTML = '<span class="badge bg-danger">Error</span>';
+        }
+
+        stdoutBox.textContent = data.stdout || '';
+        stderrBox.textContent = data.stderr || (data.error || '');
+      } catch (err) {
+        statusBadge.innerHTML = '<span class="badge bg-danger">Error</span>';
+        stderrBox.textContent = String(err);
+      } finally {
+        btn.classList.remove('btn-danger');
+        btn.classList.add('btn-primary');
+        btn.textContent = "▶ Run Sync";
+      }
+    }
+  </script>
 </body>
 </html>

@@ -1,35 +1,58 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>{{ db_name }} - Tables</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        h1 { color: #333; }
-        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f4f4f4; }
-    </style>
+  <meta charset="UTF-8">
+  <title>{{ db_name }} - Tables</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/static/css/migration.css" rel="stylesheet">
 </head>
 <body>
-    <h1>Database: {{ db_name }}</h1>
-    <p><strong>Total Objects:</strong> {{ object_count }}</p>
+  <div class="d-flex">
+    <!-- Sidebar -->
+    <nav class="sidebar bg-dark text-white p-3">
+      <h2 class="h5 mb-4">⚡ Migration Control</h2>
+      <ul class="nav flex-column">
+        <li class="nav-item mb-2"><a href="/dashboard" class="nav-link text-white">📊 Dashboard</a></li>
+        <li class="nav-item mb-2"><a href="/" class="nav-link text-white">🏠 Home</a></li>
+        <li class="nav-item mb-2"><a href="/schedule" class="nav-link text-white">⏰ Schedule</a></li>
+      </ul>
+    </nav>
 
-    <table>
-        <tr>
-            <th>Table Name</th>
-            <th>Row Count</th>
-            <th>Size (MB)</th>
-        </tr>
-        {% for tbl in tables %}
-        <tr>
-            <td>{{ tbl.table_name }}</td>
-            <td>{{ tbl.rows }}</td>
-            <td>{{ tbl.size_mb }}</td>
-        </tr>
-        {% endfor %}
-    </table>
+    <!-- Main Content -->
+    <main class="content p-4 flex-grow-1">
+      <h1 class="mb-3">Database: {{ db_name }}</h1>
+      <p><strong>Total Objects:</strong> {{ object_count }}</p>
 
-    <br>
-    <a href="/">⬅ Back to home</a>
+      <div class="card shadow-sm">
+        <div class="card-header bg-secondary text-white">Tables in {{ db_name }}</div>
+        <div class="card-body p-0">
+          <table class="table table-striped mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Table Name</th>
+                <th>Row Count</th>
+                <th>Size (MB)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for tbl in tables %}
+              <tr>
+                <td>{{ tbl.table_name }}</td>
+                <td>{{ tbl.rows }}</td>
+                <td>{{ tbl.size_mb }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="mt-3">
+        <a href="/" class="btn btn-outline-primary">⬅ Back to Home</a>
+      </div>
+    </main>
+  </div>
 </body>
 </html>
