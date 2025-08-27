@@ -1,0 +1,16 @@
+EmployeeID,FirstName,LastName,Age,Department,Salary
+1,Oliver,Harris,28,IT,61000.0
+2,Emma,Clark,26,HR,49000.0
+3,William,Lewis,34,Finance,72000.0
+4,Ava,Walker,27,Marketing,47000.0
+5,James,Young,39,Operations,70000.0
+6,Isabella,Allen,31,IT,64000.0
+7,Logan,King,33,Finance,71000.0
+8,Mia,Scott,25,HR,50500.0
+9,Lucas,Baker,36,Operations,69000.0
+10,Amelia,Adams,30,Marketing,48500.0
+11,Ethan,Carter,32,IT,65000.0
+12,Harper,Mitchell,29,HR,52000.0
+13,Benjamin,Robinson,38,Finance,73500.0
+14,Charlotte,Hill,27,Marketing,47500.0
+15,Elijah,Gonzalez,35,Operations,70500.0

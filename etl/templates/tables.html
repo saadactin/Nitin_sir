@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ db_name }} - Tables</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { color: #333; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f4f4f4; }
+    </style>
+</head>
+<body>
+    <h1>Database: {{ db_name }}</h1>
+    <p><strong>Total Objects:</strong> {{ object_count }}</p>
+
+    <table>
+        <tr>
+            <th>Table Name</th>
+            <th>Row Count</th>
+            <th>Size (MB)</th>
+        </tr>
+        {% for tbl in tables %}
+        <tr>
+            <td>{{ tbl.table_name }}</td>
+            <td>{{ tbl.rows }}</td>
+            <td>{{ tbl.size_mb }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <br>
+    <a href="/">⬅ Back to home</a>
+</body>
+</html>

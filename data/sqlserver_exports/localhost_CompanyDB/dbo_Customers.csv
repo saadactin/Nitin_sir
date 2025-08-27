@@ -1,0 +1,21 @@
+CustomerID,FirstName,LastName,Email,City
+1,Robert,King,robert.king@example.com,New York
+2,Linda,Green,linda.green@example.com,Chicago
+3,William,Hall,william.hall@example.com,Los Angeles
+4,Barbara,Young,barbara.young@example.com,Houston
+5,Joseph,Allen,joseph.allen@example.com,Boston
+6,Patricia,Wright,patricia.wright@example.com,Dallas
+7,Charles,Scott,charles.scott@example.com,Seattle
+8,Jennifer,Adams,jennifer.adams@example.com,San Francisco
+9,Matthew,Baker,matthew.baker@example.com,Miami
+10,Elizabeth,Nelson,elizabeth.nelson@example.com,Denver
+11,Robert,King,robert.king@example.com,New York
+12,Linda,Green,linda.green@example.com,Chicago
+13,William,Hall,william.hall@example.com,Los Angeles
+14,Barbara,Young,barbara.young@example.com,Houston
+15,Joseph,Allen,joseph.allen@example.com,Boston
+16,Patricia,Wright,patricia.wright@example.com,Dallas
+17,Charles,Scott,charles.scott@example.com,Seattle
+18,Jennifer,Adams,jennifer.adams@example.com,San Francisco
+19,Matthew,Baker,matthew.baker@example.com,Miami
+20,Elizabeth,Nelson,elizabeth.nelson@example.com,Denver

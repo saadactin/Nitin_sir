@@ -1,0 +1,59 @@
+/* General Layout */
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  background-color: #f8f9fa;
+  color: #333;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 250px;
+  min-height: 100vh;
+  box-shadow: 2px 0 6px rgba(0,0,0,0.1);
+}
+
+.sidebar h2 {
+  font-weight: bold;
+  border-bottom: 1px solid rgba(255,255,255,0.2);
+  padding-bottom: 8px;
+}
+
+.sidebar .nav-link {
+  font-weight: 500;
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.sidebar .nav-link:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+/* Content */
+.content {
+  overflow-y: auto;
+  max-height: 100vh;
+}
+
+.card {
+  border-radius: 12px;
+}
+
+/* Preformatted Config & Output Boxes */
+.config-box {
+  background: #212529;
+  color: #0f0;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+}
+
+.output-box {
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 0.9rem;
+  min-height: 120px;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}

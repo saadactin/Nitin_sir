@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Databases</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { color: #333; }
+        ul { list-style-type: none; padding: 0; }
+        li { margin: 8px 0; }
+        a { text-decoration: none; color: blue; font-weight: bold; }
+        a:hover { color: darkred; }
+    </style>
+</head>
+<body>
+    <h1>Available Databases</h1>
+    <ul>
+        {% for db in databases %}
+        <li><a href="/database/{{ db }}">{{ db }}</a></li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

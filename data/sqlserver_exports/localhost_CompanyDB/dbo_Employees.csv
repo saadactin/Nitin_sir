@@ -1,0 +1,11 @@
+EmployeeID,FirstName,LastName,Age,Department,Salary
+1,John,Doe,30,IT,60000.0
+2,Jane,Smith,28,HR,50000.0
+3,Michael,Johnson,35,Finance,75000.0
+4,Emily,Davis,26,Marketing,48000.0
+5,David,Wilson,40,IT,85000.0
+6,Sarah,Brown,32,Finance,72000.0
+7,Daniel,Miller,29,HR,51000.0
+8,Laura,Taylor,27,Marketing,47000.0
+9,James,Anderson,38,Operations,69000.0
+10,Sophia,Thomas,31,IT,65000.0

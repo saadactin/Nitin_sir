@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🚀 Real-time Migration Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            background-color: #f4f6f9;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .card-header {
+            font-weight: bold;
+        }
+        .status-ok { color: #28a745; }
+        .status-warning { color: #ffc107; }
+        .status-critical { color: #dc3545; }
+        .alert-row { background-color: #fff3cd; }
+    </style>
+</head>
+<body>
+<div class="container mt-4">
+    <div class="mb-4 text-center">
+        <h1>🚀 Real-time Migration Monitor</h1>
+        <p class="text-muted">Last Updated: <span id="lastUpdate">{{ last_update }}</span></p>
+    </div>
+
+    <div class="row g-4 text-center">
+        <div class="col-md-3"><div class="card"><div class="card-header">Total Servers</div><div class="card-body display-6" id="totalServers">{{ total_servers }}</div></div></div>
+        <div class="col-md-3"><div class="card"><div class="card-header">Databases</div><div class="card-body display-6" id="totalDatabases">{{ total_databases }}</div></div></div>
+        <div class="col-md-3"><div class="card"><div class="card-header">Tables</div><div class="card-body display-6" id="totalTables">{{ total_tables }}</div></div></div>
+        <div class="col-md-3"><div class="card"><div class="card-header">Rows Migrated</div><div class="card-body display-6" id="totalRowsMigrated">{{ total_rows_migrated }}</div></div></div>
+        <div class="col-md-3"><div class="card"><div class="card-header">Successful Syncs</div><div class="card-body display-6" id="successfulSyncs">{{ successful_syncs }}</div></div></div>
+        <div class="col-md-3"><div class="card"><div class="card-header">Failed Syncs</div><div class="card-body display-6" id="failedSyncs">{{ failed_syncs }}</div></div></div>
+        <div class="col-md-3"><div class="card"><div class="card-header">Avg Consistency</div><div class="card-body display-6" id="avgConsistencyScore">{{ avg_consistency_score }}%</div></div></div>
+        <div class="col-md-3"><div class="card"><div class="card-header">Avg Sync Time</div><div class="card-body display-6" id="avgSyncDuration">{{ avg_sync_duration }}s</div></div></div>
+    </div>
+
+    <hr class="my-4">
+
+    <h4 class="mb-3">📊 Consistency Issues</h4>
+    <table class="table table-bordered table-striped">
+        <thead class="table-light">
+            <tr><th>Server</th><th>Database</th><th>Table</th><th>Source Count</th><th>Target Count</th><th>Missing Rows</th><th>% Consistent</th><th>Status</th></tr>
+        </thead>
+        <tbody id="consistencyBody">
+            {% for issue in consistency_issues %}
+            <tr>
+                <td>{{ issue.server_name }}</td>
+                <td>{{ issue.database_name }}</td>
+                <td>{{ issue.table_name }}</td>
+                <td>{{ issue.source_count }}</td>
+                <td>{{ issue.target_count }}</td>
+                <td>{{ issue.missing_rows }}</td>
+                <td>{{ issue.consistency_percentage }}%</td>
+                <td class="status-{{ issue.status|lower }}">{{ issue.status }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h4 class="mt-5 mb-3 text-danger">⚠️ Active Alerts</h4>
+    <table class="table table-bordered table-striped">
+        <thead class="table-danger">
+            <tr><th>Type</th><th>Severity</th><th>Server</th><th>Database</th><th>Table</th><th>Message</th><th>Timestamp</th></tr>
+        </thead>
+        <tbody id="alertsBody">
+            {% for alert in active_alerts %}
+            <tr class="alert-row">
+                <td>{{ alert.alert_type }}</td>
+                <td class="text-uppercase fw-bold text-danger">{{ alert.severity }}</td>
+                <td>{{ alert.server_name }}</td>
+                <td>{{ alert.database_name }}</td>
+                <td>{{ alert.table_name }}</td>
+                <td>{{ alert.message }}</td>
+                <td>{{ alert.timestamp }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h4 class="mt-5 mb-3">💻 System Health</h4>
+    <table class="table table-bordered table-hover">
+        <thead class="table-light">
+            <tr><th>Metric</th><th>Value</th><th>Unit</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+            {% for health in system_health %}
+            <tr>
+                <td>{{ health.metric_name }}</td>
+                <td>{{ health.value }}</td>
+                <td>{{ health.unit }}</td>
+                <td>
+                    {% if health.value > 90 %}
+                        <span class="status-critical">CRITICAL</span>
+                    {% elif health.value > 70 %}
+                        <span class="status-warning">WARNING</span>
+                    {% else %}
+                        <span class="status-ok">OK</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+    function fetchAndUpdate() {
+        fetch('/api/dashboard-data')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+            document.getElementById('totalServers').textContent = data.total_servers;
+            document.getElementById('totalDatabases').textContent = data.total_databases;
+            document.getElementById('totalTables').textContent = data.total_tables;
+            document.getElementById('totalRowsMigrated').textContent = data.total_rows_migrated.toLocaleString();
+            document.getElementById('successfulSyncs').textContent = data.successful_syncs;
+            document.getElementById('failedSyncs').textContent = data.failed_syncs;
+            document.getElementById('avgConsistencyScore').textContent = data.avg_consistency_score.toFixed(1) + '%';
+            document.getElementById('avgSyncDuration').textContent = data.avg_sync_duration.toFixed(1) + 's';
+        });
+    }
+    setInterval(fetchAndUpdate, 30000);
+</script>
+</body>
+</html>

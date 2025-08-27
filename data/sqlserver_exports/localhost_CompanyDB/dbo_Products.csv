@@ -1,0 +1,11 @@
+ProductID,ProductName,Category,Price,Stock
+21,Laptop,Electronics,800.0,50
+22,Smartphone,Electronics,600.0,100
+23,Tablet,Electronics,300.0,75
+24,Headphones,Accessories,50.0,200
+25,Keyboard,Accessories,40.0,150
+26,Mouse,Accessories,25.0,180
+27,Chair,Furniture,120.0,40
+28,Desk,Furniture,200.0,30
+29,Printer,Electronics,150.0,25
+30,Monitor,Electronics,250.0,60
