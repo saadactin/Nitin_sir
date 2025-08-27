@@ -21,9 +21,19 @@
         <li class="nav-item mb-2">
           <a href="/" class="nav-link text-white">🏠 Home</a>
         </li>
-                <li class="nav-item mb-2"><a href="/schedule" class="nav-link text-white">⏰ Schedule</a></li>
-
-
+        {% if session.get('role') in ['admin', 'operator'] %}
+        <li class="nav-item mb-2">
+          <a href="/schedule" class="nav-link text-white">⏰ Schedule</a>
+        </li>
+        {% endif %}
+        {% if session.get('role') == 'admin' %}
+        <li class="nav-item mb-2">
+          <a href="{{ url_for('create_user') }}" class="nav-link text-white">➕ Create User</a>
+        </li>
+        {% endif %}
+        <li class="nav-item mt-4">
+          <a href="{{ url_for('logout') }}" class="nav-link text-white">🚪 Logout</a>
+        </li>
       </ul>
     </nav>
 
@@ -44,17 +54,29 @@
           <ul class="list-group">
             {% for db in databases %}
               <li class="list-group-item d-flex justify-content-between align-items-center">
-                <a href="{{ url_for('database_details', db_name=db) }}" class="text-decoration-none">
-                  🗄️ {{ db }}
-                </a>
+                <div class="d-flex align-items-center gap-2">
+                  <!-- Status badge -->
+                  {% if db_status[db] == 'up' %}
+                    <span class="badge bg-success">Up</span>
+                  {% else %}
+                    <span class="badge bg-danger">Down</span>
+                  {% endif %}
+
+                  <!-- Database link -->
+                  <a href="{{ url_for('database_details', db_name=db) }}" class="text-decoration-none">
+                    🗄️ {{ db }}
+                  </a>
+                </div>
+
                 <div class="btn-group">
                   <button id="syncBtn-{{ db }}" class="btn btn-sm btn-primary" onclick="runSync('{{ db }}')">
                     ▶ Run Sync
                   </button>
-                  <!-- Fixed Schedule button: links to /schedule with optional query param -->
+                  {% if session.get('role') in ['admin', 'operator'] %}
                   <a href="{{ url_for('schedule_page') }}?db={{ db }}" class="btn btn-sm btn-warning">
                     ⏰ Schedule
                   </a>
+                  {% endif %}
                 </div>
               </li>
             {% endfor %}
@@ -112,7 +134,6 @@
         statusBadge.innerHTML = '<span class="badge bg-danger">Error</span>';
         stderrBox.textContent = String(err);
       } finally {
-        // Back to blue after completion
         btn.classList.remove('btn-danger');
         btn.classList.add('btn-primary');
         btn.textContent = "▶ Run Sync";
