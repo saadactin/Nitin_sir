@@ -36,7 +36,7 @@
 
     <!-- Main Content -->
     <main class="content p-4 flex-grow-1">
-      <div class="container" style="max-width: 500px;">
+      <div class="container" style="max-width: 600px;">
         <h2 class="mb-4">Create User</h2>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -47,7 +47,8 @@
           {% endif %}
         {% endwith %}
 
-        <form method="POST">
+        <!-- User Creation Form -->
+        <form method="POST" class="mb-4">
           <div class="mb-3">
             <label>Username</label>
             <input type="text" name="username" class="form-control" required>
@@ -66,6 +67,25 @@
           </div>
           <button class="btn btn-success w-100">Create User</button>
         </form>
+
+        <!-- All Users Table -->
+        <h3 class="mb-3">Existing Users</h3>
+        <table class="table table-striped table-bordered">
+          <thead class="table-dark">
+            <tr>
+              <th>Username</th>
+              <th>Role</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for username, info in users.items() %}
+            <tr>
+              <td>{{ username }}</td>
+              <td>{{ info.role if info.role else info['role'] }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
 
         <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3 w-100">Back to Home</a>
       </div>

@@ -11,14 +11,31 @@
 <body>
   <div class="d-flex">
     <!-- Sidebar -->
-    <nav class="sidebar bg-dark text-white p-3">
+   <nav class="sidebar bg-dark text-white p-3">
       <h2 class="h5 mb-4">⚡ Migration Control</h2>
       <ul class="nav flex-column">
-        <li class="nav-item mb-2"><a href="/dashboard" class="nav-link text-white">📊 Dashboard</a></li>
-        <li class="nav-item mb-2"><a href="/" class="nav-link text-white">🏠 Home</a></li>
-        <li class="nav-item mb-2"><a href="/schedule" class="nav-link text-white">⏰ Schedule</a></li>
+        <li class="nav-item mb-2">
+          <a href="/dashboard" class="nav-link text-white">📊 Dashboard</a>
+        </li>
+        <li class="nav-item mb-2">
+          <a href="/" class="nav-link text-white">🏠 Home</a>
+        </li>
+        {% if session.get('role') in ['admin', 'operator'] %}
+        <li class="nav-item mb-2">
+          <a href="/schedule" class="nav-link text-white">⏰ Schedule</a>
+        </li>
+        {% endif %}
+        {% if session.get('role') == 'admin' %}
+        <li class="nav-item mb-2">
+          <a href="{{ url_for('create_user') }}" class="nav-link text-white">➕ Create User</a>
+        </li>
+        {% endif %}
+        <li class="nav-item mt-4">
+          <a href="{{ url_for('logout') }}" class="nav-link text-white">🚪 Logout</a>
+        </li>
       </ul>
     </nav>
+
 
     <!-- Main Content -->
     <main class="content p-4 flex-grow-1">

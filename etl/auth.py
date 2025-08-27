@@ -37,8 +37,8 @@ def init_auth(app: Flask):
     @app.route("/login", methods=["GET", "POST"])
     def login():
         if request.method == "POST":
-            username = request.form.get("username")
-            password = request.form.get("password")
+            username = request.form.get("username").strip()
+            password = request.form.get("password").strip()
             user = users.get(username)
             if user and user["password"] == password:
                 session["username"] = username
@@ -60,16 +60,18 @@ def init_auth(app: Flask):
     @login_required(roles=["admin"])
     def create_user():
         if request.method == "POST":
-            username = request.form.get("username")
-            password = request.form.get("password")
-            role = request.form.get("role")
+            username = request.form.get("username").strip()
+            password = request.form.get("password").strip()
+            role = request.form.get("role").strip()
 
             # Validation
-            if username in users:
+            if not username or not password or role not in ["admin", "operator", "viewer"]:
+                flash("Invalid input", "danger")
+            elif username in users:
                 flash("User already exists", "danger")
-            elif role not in ["admin", "operator", "viewer"]:
-                flash("Invalid role selected", "danger")
             else:
                 users[username] = {"password": password, "role": role}
                 flash(f"User '{username}' ({role}) created successfully", "success")
-        return render_template("create_user.html")
+
+        # Pass all users to the template to display
+        return render_template("create_user.html", users=users)
