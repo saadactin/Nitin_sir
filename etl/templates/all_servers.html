@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>All Servers & Databases</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/static/css/migration.css" rel="stylesheet">
+</head>
+<body>
+  <div class="d-flex">
+    <!-- Sidebar -->
+    {% include 'navbar.html' %}
+
+    <!-- Main Content -->
+    <main class="content p-4 flex-grow-1">
+      <div class="container">
+        <h2 class="mb-4">🖥️ All Registered Servers & Databases</h2>
+
+        {% if sqlservers %}
+          {% for name, details in sqlservers.items() %}
+          <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-dark text-white">
+              {{ name }} — {{ details.server }}
+            </div>
+            <div class="card-body">
+              <p><strong>Username:</strong> {{ details.username }}</p>
+              <p><strong>Sync Mode:</strong> {{ details.sync_mode }}</p>
+
+              <h5 class="mt-3">📂 Databases</h5>
+              {% set dbs = servers_with_dbs.get(name, []) %}
+              {% if dbs %}
+                <ul class="list-group">
+                  {% for db in dbs %}
+                  <li class="list-group-item">{{ db }}</li>
+                  {% endfor %}
+                </ul>
+              {% else %}
+                <p class="text-danger">❌ No databases found or connection failed.</p>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-center">No servers registered.</p>
+        {% endif %}
+
+        <a href="{{ url_for('all_servers') }}" class="btn btn-secondary mt-3">⬅ Back to All Servers</a>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

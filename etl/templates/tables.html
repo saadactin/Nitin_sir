@@ -11,29 +11,50 @@
 <body>
   <div class="d-flex">
     <!-- Sidebar -->
-   {% include 'navbar.html' %}
+    {% include 'navbar.html' %}
     <!-- Main Content -->
     <main class="content p-4 flex-grow-1">
       <h1 class="mb-3">Database: {{ db_name }}</h1>
       <p><strong>Total Objects:</strong> {{ object_count }}</p>
 
-      <div class="card shadow-sm">
-        <div class="card-header bg-secondary text-white">Tables in {{ db_name }}</div>
+      <!-- Tables Card with Select All & Run Sync -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+          <div>
+            <input type="checkbox" id="selectAllTables" class="form-check-input me-2">
+            <label for="selectAllTables" class="mb-0">Select All Tables</label>
+          </div>
+          <button class="btn btn-sm btn-success" id="runSelectedTables">▶ Run Sync</button>
+        </div>
+
         <div class="card-body p-0">
           <table class="table table-striped mb-0">
             <thead class="table-light">
               <tr>
+                <th></th>
                 <th>Table Name</th>
                 <th>Row Count</th>
                 <th>Size (MB)</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {% for tbl in tables %}
               <tr>
+                <td>
+                  <input type="checkbox" class="form-check-input table-checkbox" value="{{ tbl.table_name }}">
+                </td>
                 <td>{{ tbl.table_name }}</td>
                 <td>{{ tbl.rows }}</td>
                 <td>{{ tbl.size_mb }}</td>
+                <td>
+                  <button id="syncBtn-{{ tbl.table_name }}" class="btn btn-sm btn-primary" onclick="runSync('{{ tbl.table_name }}')">
+                    ▶ Run Sync
+                  </button>
+                  {% if session.get('role') in ['admin', 'operator'] %}
+                  <a href="{{ url_for('schedule_page') }}?table={{ tbl.table_name }}" class="btn btn-sm btn-warning">⏰ Schedule</a>
+                  {% endif %}
+                </td>
               </tr>
               {% endfor %}
             </tbody>
@@ -46,5 +67,51 @@
       </div>
     </main>
   </div>
+
+  <script>
+    // Individual table sync
+    async function runSync(tableName) {
+      const btn = document.getElementById(`syncBtn-${tableName}`);
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '⏳ Syncing...';
+      }
+
+      try {
+        const res = await fetch(`/run-table-sync/{{ db_name }}/${encodeURIComponent(tableName)}`);
+        const data = await res.json();
+        alert(`[${tableName}] Sync ${data.status}`);
+      } catch (err) {
+        alert(`[${tableName}] Sync failed: ${err}`);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = '▶ Run Sync';
+        }
+      }
+    }
+
+    // Select All / Run Selected functionality
+    document.addEventListener("DOMContentLoaded", () => {
+      const selectAll = document.getElementById("selectAllTables");
+      const checkboxes = document.querySelectorAll(".table-checkbox");
+      const runSelectedBtn = document.getElementById("runSelectedTables");
+
+      selectAll.addEventListener("change", () => {
+        checkboxes.forEach(cb => cb.checked = selectAll.checked);
+      });
+
+      runSelectedBtn.addEventListener("click", async () => {
+        const selected = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
+        if (selected.length === 0) {
+          alert("Please select at least one table.");
+          return;
+        }
+        for (const tbl of selected) {
+          await runSync(tbl);
+        }
+      });
+    });
+  </script>
 </body>
 </html>

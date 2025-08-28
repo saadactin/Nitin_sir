@@ -1,9 +1,10 @@
+# manage_server.py
 import os
 import yaml
 import pyodbc
 import logging
 from flask import Blueprint, render_template, request, jsonify
-from auth import login_required   # ✅ keep using your auth
+from auth import login_required   # ✅ your custom auth
 
 # ---------------- Config Path ----------------
 CONFIG_PATH = os.environ.get("DB_CONFIG_PATH") or os.path.join(
@@ -22,7 +23,7 @@ def save_config(config):
     """Save config back to YAML file."""
     with open(CONFIG_PATH, "w") as f:
         yaml.safe_dump(config, f, default_flow_style=False)
-    logging.info("Config saved successfully.")
+    logging.info("✅ Config saved successfully.")
 
 # ---------------- Blueprint ----------------
 manage_server_bp = Blueprint("manage_server", __name__, template_folder="templates")
@@ -31,8 +32,8 @@ manage_server_bp = Blueprint("manage_server", __name__, template_folder="templat
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(message)s")
 
 # ---------------- SQL Helper ----------------
-def test_sql_connection(server, username, password, timeout=5):
-    """Test SQL Server connection and return list of databases."""
+def list_all_databases(server, username, password, timeout=5):
+    """Connect to SQL Server and return list of databases."""
     try:
         conn_str = (
             "DRIVER={ODBC Driver 18 for SQL Server};"
@@ -47,25 +48,50 @@ def test_sql_connection(server, username, password, timeout=5):
                 WHERE name NOT IN ('master','tempdb','model','msdb')
                 ORDER BY name
             """)
-            databases = [row[0] for row in cursor.fetchall()]
-            logging.info(f"Connection successful to {server}. Databases: {databases}")
-            return {"status": "ok", "databases": databases}
+            return [row[0] for row in cursor.fetchall()]
     except Exception as e:
-        logging.error(f"Connection failed to {server}: {e}")
-        return {"status": "error", "error": str(e)}
+        logging.error(f"❌ Connection failed to {server}: {e}")
+        return []
+
+# ---------------- Server + DB Fetcher ----------------
+def get_sql_servers_and_databases():
+    """Return dict of {server_name: [databases]} from config."""
+    config = load_config()
+    sqlservers = config.get("sqlservers", {})
+    servers_with_dbs = {}
+
+    for name, details in sqlservers.items():
+        try:
+            dbs = list_all_databases(details["server"], details["username"], details["password"])
+            servers_with_dbs[name] = dbs
+        except Exception as e:
+            logging.error(f"⚠️ Failed to fetch DBs for {name}: {e}")
+            servers_with_dbs[name] = []
+    return servers_with_dbs
 
 # ---------------- Blueprint Routes ----------------
 @manage_server_bp.route("/manage-servers")
 @login_required(roles=["admin", "operator"])
 def manage_servers_page():
-    """Render the Manage Servers page."""
+    """Render Manage Servers page with registered servers."""
     config = load_config()
     sqlservers = config.get("sqlservers", {})
     return render_template("manage_servers.html", sqlservers=sqlservers)
 
+@manage_server_bp.route("/all-servers")
+@login_required(roles=["admin", "operator", "viewer"])
+def all_servers():
+    """Show all servers and their databases."""
+    config = load_config()
+    sqlservers = config.get("sqlservers", {})
+    servers_with_dbs = get_sql_servers_and_databases()
+    return render_template("all_servers.html",
+                           sqlservers=sqlservers,
+                           servers_with_dbs=servers_with_dbs)
+
 # ---------------- API Routes ----------------
 @manage_server_bp.route("/api/sqlservers/list")
-@login_required(roles=["admin", "operator"])
+@login_required(roles=["admin", "operator", "viewer"])
 def api_sqlservers_list():
     """Return JSON of all SQL servers."""
     config = load_config()
@@ -82,19 +108,16 @@ def api_sqlservers_add():
     password = data.get("password")
     sync_mode = data.get("sync_mode", "hybrid")
 
-    # Test connection and fetch databases
-    result = test_sql_connection(server, username, password)
-    if result["status"] == "error":
-        return jsonify({"status": "error", "error": result["error"]}), 400
+    # Fetch DBs
+    dbs = list_all_databases(server, username, password)
+    if not dbs:
+        return jsonify({"status": "error", "error": "Connection failed"}), 400
 
-    # Load existing config
+    # Load + update config
     config = load_config()
-
-    # Ensure sqlservers section exists
     if "sqlservers" not in config:
         config["sqlservers"] = {}
 
-    # Add new server entry
     config["sqlservers"][name] = {
         "server": server,
         "username": username,
@@ -103,11 +126,9 @@ def api_sqlservers_add():
         "check_new_databases": True,
         "skip_databases": []
     }
-
-    # Save config
     save_config(config)
 
-    return jsonify({"status": "ok", "databases": result.get("databases", [])})
+    return jsonify({"status": "ok", "databases": dbs})
 
 @manage_server_bp.route("/api/sqlservers/delete/<server_name>", methods=["DELETE"])
 @login_required(roles=["admin"])

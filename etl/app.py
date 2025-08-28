@@ -8,7 +8,10 @@ import subprocess
 import pyodbc
 import yaml
 from flask import Flask, render_template, request, jsonify, session
+from manage_server import get_sql_servers_and_databases, manage_server_bp
+from sql_helper import get_all_servers_and_databases  # import the helper
 
+# ---- Internal modules ----
 from comprehensive_logging import comprehensive_logger
 from view_details_database import list_all_databases, get_database_details
 from database_status import check_all_databases
@@ -31,9 +34,9 @@ schedules = {}      # job_id -> schedule info
 stop_flags = {}     # job_id -> stop signal
 
 # ---------------- Context Processor ----------------
-# Makes current_role available in all templates
 @app.context_processor
 def inject_user_role():
+    """Expose user role into templates"""
     return {"current_role": session.get("role")}
 
 # ---------------- Config loader ----------------
@@ -54,9 +57,34 @@ CONFIG_PATH = resolve_config_path()
 with open(CONFIG_PATH, "r") as f:
     config = yaml.safe_load(f)
 
+SQL_SERVERS = config.get("sqlservers", {})
+
 # ---------------- SQL Server Helper ----------------
-def get_sql_servers_and_databases() -> dict:
-    servers = config.get("sqlservers", {})
+def get_connection(conf, db_name=None):
+    conn_str = (
+        "DRIVER={ODBC Driver 18 for SQL Server};"
+        f"SERVER={conf['server']};UID={conf['username']};PWD={conf['password']};"
+        "TrustServerCertificate=yes;Encrypt=no;"
+    )
+    if db_name:
+        conn_str += f"Database={db_name};"
+    return pyodbc.connect(conn_str, timeout=5)
+
+def list_databases(conf):
+    conn = get_connection(conf)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT name 
+        FROM sys.databases 
+        WHERE name NOT IN ('master','tempdb','model','msdb')
+        ORDER BY name
+    """)
+    dbs = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    return dbs
+
+def get_sql_servers_and_databases():
+    servers = SQL_SERVERS
     result = {}
     for server_name, conf in servers.items():
         server_host = conf.get("server", "localhost")
@@ -121,11 +149,11 @@ def schedule_job(job_id, server, database, interval=None, run_time=None):
     t = threading.Thread(target=job_loop, daemon=True)
     t.start()
 
-# ---------------- Routes ----------------
+# ---------------- Core Routes ----------------
 @app.route("/")
 @login_required(roles=["admin","operator","viewer"])
 def index():
-    sqlservers = config.get("sqlservers", {})
+    sqlservers = SQL_SERVERS
     pg_conf = config.get("postgresql", {})
 
     db_status = {}
@@ -235,7 +263,59 @@ def delete_schedule(job_id):
         return jsonify({"status": "deleted"})
     return jsonify({"status": "not found"}), 404
 
+# ---------------- All-Servers + DBs ----------------
+@app.route("/all-servers")
+def all_servers():
+    servers_with_dbs = get_all_servers_and_databases()
+
+    # Create a simplified SQL server info for template
+    sqlservers = {
+        name: {
+            "server": conf["server"],
+            "username": conf.get("username", ""),
+            "sync_mode": conf.get("sync_mode", "N/A")
+        } for name, conf in servers_with_dbs.items()
+    }
+
+    return render_template(
+        "all_servers.html",
+        sqlservers=sqlservers,
+        servers_with_dbs=servers_with_dbs
+    )
+# ---------------- All-DBs Route ----------------
+@app.route("/all-dbs")
+@login_required(roles=["admin","operator","viewer"])
+def all_databases():
+    """Show all databases grouped by server"""
+    db_list = get_sql_servers_and_databases()
+    return render_template("all_databases.html", databases=db_list)
+
+@app.route("/api/sqlservers/list")
+@login_required(roles=["admin","operator","viewer"])
+def api_list_servers():
+    result = {}
+    for name, conf in SQL_SERVERS.items():
+        result[name] = {
+            "server": conf.get("server"),
+            "username": conf.get("username"),
+            "sync_mode": conf.get("sync_mode", "N/A"),
+        }
+    return jsonify(result)
+
+@app.route("/api/sqlservers/<server_name>/databases")
+@login_required(roles=["admin","operator","viewer"])
+def api_server_databases(server_name):
+    conf = SQL_SERVERS.get(server_name)
+    if not conf:
+        return jsonify({"status": "error", "error": f"Server '{server_name}' not found"}), 404
+    try:
+        dbs = list_databases(conf)
+        return jsonify({"status": "ok", "databases": dbs})
+    except Exception as e:
+        logging.error(f"Error connecting to {server_name}: {e}")
+        return jsonify({"status": "error", "error": str(e)}), 500
+
 # ---------------- Main ----------------
 if __name__ == "__main__":
-    logging.info("Starting Flask app with manual Scheduler...")
+    logging.info("🚀 Starting Flask app with Scheduler + All-Servers API...")
     app.run(debug=True)
