@@ -49,12 +49,22 @@
 
       <!-- Databases -->
       <div class="card shadow-sm mb-4">
-        <div class="card-header bg-secondary text-white">Available Databases</div>
+        <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+          <div>
+            <input type="checkbox" id="selectAll" class="form-check-input me-2">
+            <label for="selectAll" class="mb-0">Select All Databases</label>
+          </div>
+          <button class="btn btn-sm btn-success" onclick="runSelectedSync()">▶ Run Sync</button>
+        </div>
+
         <div class="card-body">
           <ul class="list-group">
             {% for db in databases %}
               <li class="list-group-item d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center gap-2">
+                  <!-- Database Checkbox -->
+                  <input type="checkbox" class="form-check-input db-checkbox" value="{{ db }}">
+
                   <!-- Status badge -->
                   {% if db_status[db] == 'up' %}
                     <span class="badge bg-success">Up</span>
@@ -113,10 +123,11 @@
       stdoutBox.textContent = '';
       stderrBox.textContent = '';
 
-      // Turn button red while syncing
-      btn.classList.remove('btn-primary', 'btn-outline-primary');
-      btn.classList.add('btn-danger');
-      btn.textContent = "⏳ Syncing...";
+      if (btn) {
+        btn.classList.remove('btn-primary', 'btn-outline-primary');
+        btn.classList.add('btn-danger');
+        btn.textContent = "⏳ Syncing...";
+      }
 
       try {
         const res = await fetch(`/run-sync/${encodeURIComponent(dbName)}`);
@@ -128,16 +139,47 @@
           statusBadge.innerHTML = '<span class="badge bg-danger">Error</span>';
         }
 
-        stdoutBox.textContent = data.stdout || '';
-        stderrBox.textContent = data.stderr || (data.error || '');
+        stdoutBox.textContent += `\n\n[${dbName}] -------------------\n` + (data.stdout || '');
+        stderrBox.textContent += `\n\n[${dbName}] -------------------\n` + (data.stderr || (data.error || ''));
       } catch (err) {
         statusBadge.innerHTML = '<span class="badge bg-danger">Error</span>';
-        stderrBox.textContent = String(err);
+        stderrBox.textContent += `\n\n[${dbName}] -------------------\n` + String(err);
       } finally {
-        btn.classList.remove('btn-danger');
-        btn.classList.add('btn-primary');
-        btn.textContent = "▶ Run Sync";
+        if (btn) {
+          btn.classList.remove('btn-danger');
+          btn.classList.add('btn-primary');
+          btn.textContent = "▶ Run Sync";
+        }
       }
+    }
+
+    // Select All handler
+    document.addEventListener("DOMContentLoaded", () => {
+      const selectAll = document.getElementById("selectAll");
+      selectAll.addEventListener("change", () => {
+        document.querySelectorAll(".db-checkbox").forEach(cb => {
+          cb.checked = selectAll.checked;
+        });
+      });
+    });
+
+    // Run sync for selected
+    async function runSelectedSync() {
+      const selected = Array.from(document.querySelectorAll(".db-checkbox:checked"))
+                            .map(cb => cb.value);
+
+      if (selected.length === 0) {
+        alert("Please select at least one database.");
+        return;
+      }
+
+      // Run sequentially (one by one)
+      for (const db of selected) {
+        await runSync(db);
+      }
+
+      // 👉 If you want parallel execution, replace above with:
+      // await Promise.all(selected.map(db => runSync(db)));
     }
   </script>
 </body>
