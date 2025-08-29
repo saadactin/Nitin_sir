@@ -5,13 +5,17 @@
   <title>All Servers & Databases</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="/static/css/migration.css" rel="stylesheet">
+  <style>
+    /* Optional: add smooth color transition for buttons */
+    .btn {
+      transition: background-color 0.3s ease;
+    }
+  </style>
 </head>
 <body>
   <div class="d-flex">
-    <!-- Sidebar -->
     {% include 'navbar.html' %}
 
-    <!-- Main Content -->
     <main class="content p-4 flex-grow-1">
       <div class="container">
         <h2 class="mb-4">🖥️ All Registered Servers & Databases</h2>
@@ -29,11 +33,42 @@
               <h5 class="mt-3">📂 Databases</h5>
               {% set dbs = servers_with_dbs.get(name, []) %}
               {% if dbs %}
-                <ul class="list-group">
-                  {% for db in dbs %}
-                  <li class="list-group-item">{{ db }}</li>
-                  {% endfor %}
-                </ul>
+              <div class="card shadow-sm mb-4">
+                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                  <div>
+                    <input type="checkbox" id="selectAll-{{ name }}" class="form-check-input me-2 select-all">
+                    <label for="selectAll-{{ name }}" class="mb-0">Select All Databases</label>
+                  </div>
+                  <button id="runSelected-{{ name }}" class="btn btn-sm btn-success" onclick="runSelectedSync('{{ name }}')">
+                    ▶ Run Sync
+                  </button>
+                </div>
+                <div class="card-body">
+                  <ul class="list-group">
+                    {% for db in dbs %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <div class="d-flex align-items-center gap-2">
+                        <input type="checkbox" class="form-check-input db-checkbox-{{ name }}" value="{{ db }}">
+                        <a href="{{ url_for('database_details', db_name=db) }}" class="text-decoration-none">
+                          🗄️ {{ db }}
+                        </a>
+                      </div>
+
+                      <div class="btn-group">
+                        <button id="syncBtn-{{ db }}" class="btn btn-sm btn-primary" onclick="runSync('{{ name }}', '{{ db }}', this)">
+                          ▶ Run Sync
+                        </button>
+                        {% if session.get('role') in ['admin', 'operator'] %}
+                        <a href="{{ url_for('schedule_page') }}?db={{ db }}" class="btn btn-sm btn-warning">
+                          ⏰ Schedule
+                        </a>
+                        {% endif %}
+                      </div>
+                    </li>
+                    {% endfor %}
+                  </ul>
+                </div>
+              </div>
               {% else %}
                 <p class="text-danger">❌ No databases found or connection failed.</p>
               {% endif %}
@@ -48,5 +83,85 @@
       </div>
     </main>
   </div>
+
+<script>
+  // Select All functionality per server
+  document.querySelectorAll('.select-all').forEach(selectAllCheckbox => {
+    selectAllCheckbox.addEventListener('change', function() {
+      const serverName = this.id.replace('selectAll-', '');
+      const checkboxes = document.querySelectorAll('.db-checkbox-' + serverName);
+      checkboxes.forEach(cb => cb.checked = this.checked);
+    });
+  });
+
+  // Run sync for selected databases of a server
+  function runSelectedSync(serverName) {
+    const selectedDbs = [];
+    document.querySelectorAll('.db-checkbox-' + serverName + ':checked').forEach(cb => {
+      selectedDbs.push(cb.value);
+    });
+    if(selectedDbs.length === 0) {
+      alert('Select at least one database!');
+      return;
+    }
+
+    const runButton = document.getElementById('runSelected-' + serverName);
+    runButton.classList.remove('btn-success');
+    runButton.classList.add('btn-warning');
+    runButton.innerText = '⏳ Running...';
+
+    fetch("/api/run-sync", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({server: serverName, databases: selectedDbs})
+    })
+    .then(res => res.json())
+    .then(data => {
+      console.log(data);
+      runButton.classList.remove('btn-warning');
+      runButton.classList.add('btn-success');
+      runButton.innerText = '✅ Completed';
+      setTimeout(() => { runButton.innerText = '▶ Run Sync'; }, 2000);
+    })
+    .catch(err => {
+      console.error(err);
+      runButton.classList.remove('btn-warning');
+      runButton.classList.add('btn-danger');
+      runButton.innerText = '❌ Error';
+    });
+  }
+
+  // Individual database sync
+  function runSync(serverName, dbName, btn) {
+    const temp = btn;
+    temp.classList.remove('btn-primary');
+    temp.classList.add('btn-warning');
+    temp.innerText = '⏳ Running...';
+
+    fetch("/api/run-sync", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({server: serverName, databases: [dbName]})
+    })
+    .then(res => res.json())
+    .then(data => {
+      console.log(data);
+      temp.classList.remove('btn-warning');
+      temp.classList.add('btn-success');
+      temp.innerText = '✅ Completed';
+      setTimeout(() => { 
+        temp.classList.remove('btn-success');
+        temp.classList.add('btn-primary');
+        temp.innerText = '▶ Run Sync'; 
+      }, 2000);
+    })
+    .catch(err => {
+      console.error(err);
+      temp.classList.remove('btn-warning');
+      temp.classList.add('btn-danger');
+      temp.innerText = '❌ Error';
+    });
+  }
+</script>
 </body>
 </html>

@@ -149,6 +149,31 @@ def schedule_job(job_id, server, database, interval=None, run_time=None):
     t = threading.Thread(target=job_loop, daemon=True)
     t.start()
 
+# ---------------- Table Sync Helper ----------------
+def run_table_sync(server_name, db_name, table_name):
+    """
+    Sync a specific table in a database on a given server.
+    This can call your existing hybrid_sync.py or implement real sync logic.
+    """
+    try:
+        logging.info(f"[TABLE SYNC] {server_name}/{db_name}/{table_name} - Started")
+        script_path = os.path.join(os.path.dirname(__file__), "hybrid_sync.py")
+        env = os.environ.copy()
+        env["DB_NAME"] = db_name
+        env["TABLE_NAME"] = table_name
+        env["SERVER_NAME"] = server_name
+        result = subprocess.run(
+            [sys.executable, script_path],
+            capture_output=True, text=True, env=env
+        )
+        logging.info(f"[TABLE SYNC] {server_name}/{db_name}/{table_name} - Finished, rc={result.returncode}")
+        if result.returncode != 0:
+            return False, result.stderr
+        return True, result.stdout
+    except Exception as e:
+        logging.error(f"[TABLE SYNC] Error for {server_name}/{db_name}/{table_name}: {e}")
+        return False, str(e)
+
 # ---------------- Core Routes ----------------
 @app.route("/")
 @login_required(roles=["admin","operator","viewer"])
@@ -265,13 +290,17 @@ def delete_schedule(job_id):
 
 # ---------------- All-Servers + DBs ----------------
 @app.route("/all-servers")
+@login_required(roles=["admin","operator","viewer"])
 def all_servers():
+    """
+    Render a page showing all servers with their databases.
+    """
     servers_with_dbs = get_all_servers_and_databases()
 
-    # Create a simplified SQL server info for template
+    # Simplified SQL server info for template
     sqlservers = {
         name: {
-            "server": conf["server"],
+            "server": conf.get("server"),
             "username": conf.get("username", ""),
             "sync_mode": conf.get("sync_mode", "N/A")
         } for name, conf in servers_with_dbs.items()
@@ -282,29 +311,108 @@ def all_servers():
         sqlservers=sqlservers,
         servers_with_dbs=servers_with_dbs
     )
-# ---------------- All-DBs Route ----------------
-@app.route("/all-dbs")
-@login_required(roles=["admin","operator","viewer"])
-def all_databases():
-    """Show all databases grouped by server"""
-    db_list = get_sql_servers_and_databases()
-    return render_template("all_databases.html", databases=db_list)
 
+
+# ---------------- API Routes ----------------
 @app.route("/api/sqlservers/list")
 @login_required(roles=["admin","operator","viewer"])
 def api_list_servers():
+    """
+    Return all SQL servers info as JSON.
+    """
     result = {}
     for name, conf in SQL_SERVERS.items():
         result[name] = {
             "server": conf.get("server"),
-            "username": conf.get("username"),
+            "username": conf.get("username", ""),
             "sync_mode": conf.get("sync_mode", "N/A"),
         }
     return jsonify(result)
 
+@app.route("/api/run-sync", methods=["POST"])
+@login_required(roles=["admin","operator"])
+def api_run_sync():
+    """
+    Trigger sync for a list of databases on a server.
+    Expects JSON: {"server": "Server1", "databases": ["db1","db2"]}
+    """
+    data = request.get_json()
+    server = data.get("server")
+    databases = data.get("databases", [])
+
+    if not server or not databases:
+        return jsonify({"status": "error", "error": "Server or databases not provided"}), 400
+
+    results = {}
+    for db in databases:
+        try:
+            run_sync(server, db)
+            results[db] = "success"
+        except Exception as e:
+            results[db] = f"error: {str(e)}"
+
+    return jsonify({"status": "ok", "results": results})
+
+# ---------------- Table Sync API ----------------
+@app.route("/run-table-sync/<db_name>/<table_name>", methods=["GET"])
+@login_required(roles=["admin","operator"])
+def api_run_table_sync(db_name, table_name):
+    """
+    Sync a specific table in a database.
+    Optional: assume a default server or use selected server from session/config.
+    """
+    # For simplicity, pick the first server that has this database
+    server_name = None
+    for srv, conf in SQL_SERVERS.items():
+        dbs = list_databases(conf)
+        if db_name in dbs:
+            server_name = srv
+            break
+
+    if not server_name:
+        return jsonify({"status": "error", "message": f"Database '{db_name}' not found on any server"}), 404
+
+    success, message = run_table_sync(server_name, db_name, table_name)
+    status = "Success" if success else "Error"
+    return jsonify({"status": status, "message": message})
+
+@app.route("/api/run-tables-sync", methods=["POST"])
+@login_required(roles=["admin","operator"])
+def api_run_multiple_tables():
+    """
+    Sync multiple selected tables at once.
+    Expects JSON: {"db_name": "TestDB", "tables": ["users", "orders"]}
+    """
+    data = request.get_json()
+    db_name = data.get("db_name")
+    tables = data.get("tables", [])
+
+    if not db_name or not tables:
+        return jsonify({"status": "error", "message": "Database name or tables not provided"}), 400
+
+    results = {}
+    for tbl in tables:
+        server_name = None
+        for srv, conf in SQL_SERVERS.items():
+            dbs = list_databases(conf)
+            if db_name in dbs:
+                server_name = srv
+                break
+        if not server_name:
+            results[tbl] = "Database not found"
+            continue
+
+        success, msg = run_table_sync(server_name, db_name, tbl)
+        results[tbl] = "Success" if success else f"Error: {msg}"
+
+    return jsonify({"status": "ok", "results": results})
+
 @app.route("/api/sqlservers/<server_name>/databases")
 @login_required(roles=["admin","operator","viewer"])
 def api_server_databases(server_name):
+    """
+    Return all databases for a specific server as JSON.
+    """
     conf = SQL_SERVERS.get(server_name)
     if not conf:
         return jsonify({"status": "error", "error": f"Server '{server_name}' not found"}), 404
@@ -314,7 +422,6 @@ def api_server_databases(server_name):
     except Exception as e:
         logging.error(f"Error connecting to {server_name}: {e}")
         return jsonify({"status": "error", "error": str(e)}), 500
-
 # ---------------- Main ----------------
 if __name__ == "__main__":
     logging.info("🚀 Starting Flask app with Scheduler + All-Servers API...")

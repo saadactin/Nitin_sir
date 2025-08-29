@@ -7,12 +7,13 @@
   <!-- Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="/static/css/migration.css" rel="stylesheet">
+  <style>
+    .btn { transition: background-color 0.3s ease; }
+  </style>
 </head>
 <body>
   <div class="d-flex">
-    <!-- Sidebar -->
     {% include 'navbar.html' %}
-    <!-- Main Content -->
     <main class="content p-4 flex-grow-1">
       <h1 class="mb-3">Database: {{ db_name }}</h1>
       <p><strong>Total Objects:</strong> {{ object_count }}</p>
@@ -48,7 +49,7 @@
                 <td>{{ tbl.rows }}</td>
                 <td>{{ tbl.size_mb }}</td>
                 <td>
-                  <button id="syncBtn-{{ tbl.table_name }}" class="btn btn-sm btn-primary" onclick="runSync('{{ tbl.table_name }}')">
+                  <button id="syncBtn-{{ tbl.table_name }}" class="btn btn-sm btn-primary" onclick="runSync('{{ tbl.table_name }}', this)">
                     ▶ Run Sync
                   </button>
                   {% if session.get('role') in ['admin', 'operator'] %}
@@ -67,51 +68,132 @@
       </div>
     </main>
   </div>
-
-  <script>
-    // Individual table sync
-    async function runSync(tableName) {
-      const btn = document.getElementById(`syncBtn-${tableName}`);
-      if (btn) {
-        btn.disabled = true;
-        btn.textContent = '⏳ Syncing...';
-      }
-
-      try {
-        const res = await fetch(`/run-table-sync/{{ db_name }}/${encodeURIComponent(tableName)}`);
-        const data = await res.json();
-        alert(`[${tableName}] Sync ${data.status}`);
-      } catch (err) {
-        alert(`[${tableName}] Sync failed: ${err}`);
-      } finally {
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = '▶ Run Sync';
-        }
-      }
+<script>
+  // Individual table sync
+  async function runSync(tableName, btn) {
+    if (btn) {
+      btn.disabled = true;
+      btn.classList.remove('btn-primary','btn-success','btn-danger');
+      btn.classList.add('btn-warning');
+      btn.textContent = '⏳ Syncing...';
     }
 
-    // Select All / Run Selected functionality
-    document.addEventListener("DOMContentLoaded", () => {
-      const selectAll = document.getElementById("selectAllTables");
-      const checkboxes = document.querySelectorAll(".table-checkbox");
-      const runSelectedBtn = document.getElementById("runSelectedTables");
+    try {
+      const res = await fetch(`/run-table-sync/{{ db_name }}/${encodeURIComponent(tableName)}`);
+      const data = await res.json();
 
-      selectAll.addEventListener("change", () => {
-        checkboxes.forEach(cb => cb.checked = selectAll.checked);
-      });
+      if (btn) {
+        btn.classList.remove('btn-warning');
+        if (data.status === "Success") {
+          btn.classList.add('btn-success');
+          btn.textContent = '✅ Completed';
+        } else {
+          btn.classList.add('btn-danger');
+          btn.textContent = '❌ Error';
+        }
+      }
+    } catch (err) {
+      if (btn) {
+        btn.classList.remove('btn-warning');
+        btn.classList.add('btn-danger');
+        btn.textContent = '❌ Error';
+      }
+      console.error(err);
+    } finally {
+      if (btn) {
+        setTimeout(() => {
+          btn.disabled = false;
+          btn.classList.remove('btn-success','btn-danger','btn-warning');
+          btn.classList.add('btn-primary');
+          btn.textContent = '▶ Run Sync';
+        }, 2000);
+      }
+    }
+  }
 
-      runSelectedBtn.addEventListener("click", async () => {
-        const selected = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
-        if (selected.length === 0) {
-          alert("Please select at least one table.");
-          return;
-        }
-        for (const tbl of selected) {
-          await runSync(tbl);
-        }
-      });
+  // Select All / Run Selected functionality using POST API
+  document.addEventListener("DOMContentLoaded", () => {
+    const selectAll = document.getElementById("selectAllTables");
+    const checkboxes = document.querySelectorAll(".table-checkbox");
+    const runSelectedBtn = document.getElementById("runSelectedTables");
+
+    // Select/Deselect all tables
+    selectAll.addEventListener("change", () => {
+      checkboxes.forEach(cb => cb.checked = selectAll.checked);
     });
-  </script>
+
+    // Run selected tables
+    runSelectedBtn.addEventListener("click", async () => {
+      const selected = Array.from(checkboxes)
+                            .filter(cb => cb.checked)
+                            .map(cb => cb.value);
+
+      if (selected.length === 0) {
+        alert("Please select at least one table.");
+        return;
+      }
+
+      // Change button color while syncing
+      runSelectedBtn.disabled = true;
+      runSelectedBtn.classList.remove('btn-success','btn-danger','btn-primary');
+      runSelectedBtn.classList.add('btn-warning');
+      runSelectedBtn.textContent = '⏳ Running...';
+
+      try {
+        const res = await fetch("/api/run-tables-sync", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({
+            db_name: "{{ db_name }}",
+            tables: selected
+          })
+        });
+
+        const data = await res.json();
+
+        // Update each table button color based on individual result
+        selected.forEach(tbl => {
+          const btn = document.getElementById(`syncBtn-${tbl}`);
+          if (!btn) return;
+
+          btn.classList.remove('btn-primary','btn-success','btn-danger','btn-warning');
+          if (data.results[tbl] === "Success") {
+            btn.classList.add('btn-success');
+            btn.textContent = '✅ Completed';
+          } else {
+            btn.classList.add('btn-danger');
+            btn.textContent = '❌ Error';
+          }
+        });
+
+        // Update Run Selected button color based on overall success
+        if (Object.values(data.results).every(r => r === "Success")) {
+          runSelectedBtn.classList.remove('btn-warning');
+          runSelectedBtn.classList.add('btn-success');
+          runSelectedBtn.textContent = '✅ Completed';
+        } else {
+          runSelectedBtn.classList.remove('btn-warning');
+          runSelectedBtn.classList.add('btn-danger');
+          runSelectedBtn.textContent = '❌ Some Errors';
+        }
+
+      } catch (err) {
+        console.error(err);
+        runSelectedBtn.classList.remove('btn-warning');
+        runSelectedBtn.classList.add('btn-danger');
+        runSelectedBtn.textContent = '❌ Error';
+      } finally {
+        // Reset Run Selected button after 2 seconds
+        setTimeout(() => {
+          runSelectedBtn.disabled = false;
+          runSelectedBtn.classList.remove('btn-success','btn-danger','btn-warning');
+          runSelectedBtn.classList.add('btn-success');
+          runSelectedBtn.textContent = '▶ Run Sync';
+        }, 2000);
+      }
+    });
+  });
+</script>
+
 </body>
 </html>
