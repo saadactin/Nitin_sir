@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Manage SQL Servers</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <link href="/static/css/migration.css" rel="stylesheet">
+</head>
+<body>
+  <div class="d-flex">
+    <!-- Sidebar -->
+    {% include 'navbar.html' %}
+
+    <!-- Main Content -->
+    <main class="content p-4 flex-grow-1">
+      <h1>Manage SQL Servers</h1>
+
+      <!-- Add New Server -->
+      <div class="card mb-4 p-3">
+        <h4>Add New Server</h4>
+        <form id="serverForm">
+          <div class="mb-2">
+            <label>Name:</label>
+            <input type="text" class="form-control" name="name" required>
+          </div>
+          <div class="mb-2">
+            <label>Server Host:</label>
+            <input type="text" class="form-control" name="server" required>
+          </div>
+          <div class="mb-2">
+            <label>Username:</label>
+            <input type="text" class="form-control" name="username" required>
+          </div>
+          <div class="mb-2">
+            <label>Password:</label>
+            <input type="password" class="form-control" name="password" required>
+          </div>
+          <div class="mb-2">
+            <label>Sync Mode:</label>
+            <select class="form-control" name="sync_mode">
+              <option value="full">Full</option>
+              <option value="incremental">Incremental</option>
+              <option value="hybrid" selected>Hybrid</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary">Add Server</button>
+        </form>
+        <div id="message" class="mt-2"></div>
+      </div>
+
+      <!-- Existing Servers -->
+      <h4>Existing Servers</h4>
+      <ul id="serverList" class="list-group"></ul>
+    </main>
+  </div>
+
+<script>
+function loadServers() {
+  axios.get('/api/sqlservers/list')
+    .then(res => {
+      const servers = res.data;
+      const list = document.getElementById("serverList");
+      list.innerHTML = '';
+
+      Object.entries(servers).forEach(([name, conf]) => {
+        const li = document.createElement("li");
+        li.className = "list-group-item d-flex justify-content-between align-items-center";
+
+        // Server info
+        const info = document.createElement("span");
+        info.textContent = `${name} -> ${conf.server} (${conf.username})`;
+        li.appendChild(info);
+
+        // Button group
+        const btnGroup = document.createElement("div");
+
+        // Edit button
+        const editBtn = document.createElement("button");
+        editBtn.className = "btn btn-sm btn-warning me-1";
+        editBtn.textContent = "Edit";
+        editBtn.onclick = () => editServer(name, conf);
+        btnGroup.appendChild(editBtn);
+
+        // Delete button
+        const delBtn = document.createElement("button");
+        delBtn.className = "btn btn-sm btn-danger";
+        delBtn.textContent = "Delete";
+        delBtn.onclick = () => deleteServer(name);
+        btnGroup.appendChild(delBtn);
+
+        li.appendChild(btnGroup);
+        list.appendChild(li);
+      });
+    });
+}
+
+function deleteServer(serverName) {
+  if (!confirm(`Are you sure you want to delete server "${serverName}"?`)) return;
+
+  axios.delete(`/api/sqlservers/delete/${encodeURIComponent(serverName)}`)
+    .then(res => {
+      document.getElementById("message").textContent = `Server "${serverName}" deleted successfully!`;
+      loadServers();
+    })
+    .catch(err => {
+      document.getElementById("message").textContent = "Error deleting server: " + (err.response?.data?.error || err.message);
+    });
+}
+
+function editServer(serverName, conf) {
+  const form = document.getElementById("serverForm");
+  form.name.value = serverName;
+  form.server.value = conf.server;
+  form.username.value = conf.username;
+  form.password.value = conf.password;
+  form.sync_mode.value = conf.sync_mode;
+  document.getElementById("message").textContent = `Editing server "${serverName}". Click Add to save changes.`;
+}
+
+document.getElementById("serverForm").addEventListener("submit", function(e) {
+  e.preventDefault();
+  const formData = new FormData(this);
+  const payload = {
+    name: formData.get('name'),
+    server: formData.get('server'),
+    username: formData.get('username'),
+    password: formData.get('password'),
+    sync_mode: formData.get('sync_mode')
+  };
+
+  axios.post('/api/sqlservers/add', payload)
+    .then(res => {
+      document.getElementById("message").textContent = `Server "${payload.name}" saved successfully!`;
+      loadServers();
+      this.reset();
+    })
+    .catch(err => {
+      document.getElementById("message").textContent = "Error: " + (err.response?.data?.error || err.message);
+    });
+});
+
+loadServers();
+</script>
+</body>
+</html>

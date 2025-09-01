@@ -1,40 +1,12 @@
-sqlservers:
-  server1:
-    server: localhost
-    username: SA
-    password: root
-    sync_mode: "hybrid"  # 'full', 'incremental', or 'hybrid'
-    check_new_databases: true  # Discover new databases
-    skip_databases:  # Optional - if empty, migrate ALL user databases
-      - Emc_migrationTest2
-      - Emc_migrationTest3
-      - Emc_migrationTest4
-      - Emc_migrationTest5
-      - Emc_migrationTest6
-      - Emc_migrationTest7
-      - HelpDesk_30032022
-      - Sicoma_08Mar2025_Final
-      - VTS_06Mar2025_Final
-    
-  # server2:
-  #   server: KVM-Arch\SQLEXPRESS
-  #   username: Bcp
-  #   password: Bcp@123
-  #   sync_mode: "hybrid"  # 'full', 'incremental', or 'hybrid'
-  #   check_new_databases: true  # Discover new databases
-  #   skip_databases:  # Optional - if empty, migrate ALL user databases
-  #     - Aquarius_12Mar2025_Final
-  #     - Emc_migrationTest2
-  #     - Emc_migrationTest3
-  #     - Emc_migrationTest4
-  #     - Emc_migrationTest5
-  #     - Emc_migrationTest6
-  #     - Emc_migrationTest7
-
 postgresql:
-  host: localhost
-  port: 5432
   database: CompanyDB
-  username: migration_user
+  host: localhost
   password: StrongPassword123
+  port: 5432
   schema: CompanyDB
+  username: migration_user
+sqlservers:
+  ACTIN-CS-85:
+    server: "localhost"
+    username: "sa"
+    password: "root"

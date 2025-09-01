@@ -1,5 +1,5 @@
-   sqlserver:
-     server: YOUR_SQL_SERVER_HOST
-     database: YOUR_DATABASE_NAME
-     username: YOUR_USERNAME
-     password: YOUR_PASSWORD
+  #  sqlserver:
+  #    server: YOUR_SQL_SERVER_HOST
+  #    database: YOUR_DATABASE_NAME
+  #    username: YOUR_USERNAME
+  #    password: YOUR_PASSWORD

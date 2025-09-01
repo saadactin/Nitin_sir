@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>All SQL Servers</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <link href="/static/css/migration.css" rel="stylesheet">
+</head>
+<body>
+  <div class="d-flex">
+    <!-- Sidebar -->
+    {% include 'navbar.html' %}
+
+    <!-- Main Content -->
+    <main class="content p-4 flex-grow-1">
+      <h1>All Servers</h1>
+      <ul id="serverList" class="list-group"></ul>
+    </main>
+  </div>
+
+<script>
+function loadServers() {
+  axios.get('/api/sqlservers/list')
+    .then(res => {
+      const servers = res.data;
+      const list = document.getElementById("serverList");
+      list.innerHTML = '';
+
+      Object.entries(servers).forEach(([name, conf]) => {
+        const li = document.createElement("li");
+        li.className = "list-group-item d-flex justify-content-between align-items-center flex-column align-items-start mb-2";
+
+        // Server info
+        const info = document.createElement("span");
+        info.textContent = `${name} -> ${conf.server} (${conf.username}) [${conf.sync_mode}]`;
+        li.appendChild(info);
+
+        // Show Databases button
+        const dbBtn = document.createElement("button");
+        dbBtn.className = "btn btn-sm btn-info mt-2";
+        dbBtn.textContent = "Show DBs";
+        dbBtn.onclick = () => {
+          axios.get(`/api/sqlservers/${encodeURIComponent(name)}/databases`)
+            .then(res => {
+              if(res.data.status === "ok") {
+                const dbList = document.createElement("ul");
+                dbList.className = "list-group mt-2";
+
+                res.data.databases.forEach(db => {
+                  const dbItem = document.createElement("li");
+                  dbItem.className = "list-group-item small";
+                  dbItem.textContent = db;
+                  dbList.appendChild(dbItem);
+                });
+
+                // Remove old db list if exists
+                const old = li.querySelector("ul");
+                if(old) old.remove();
+
+                li.appendChild(dbList);
+              } else {
+                alert(`Error: ${res.data.error}`);
+              }
+            })
+            .catch(err => alert("Error fetching databases: " + err));
+        };
+        li.appendChild(dbBtn);
+
+        list.appendChild(li);
+      });
+    })
+    .catch(err => {
+      console.error("Error loading servers:", err);
+    });
+}
+
+// Load servers on page load
+loadServers();
+</script>
+</body>
+</html>

@@ -10,60 +10,49 @@
 </head>
 <body>
   <div class="d-flex">
-    <!-- Sidebar -->
-   <nav class="sidebar bg-dark text-white p-3">
-      <h2 class="h5 mb-4">⚡ Migration Control</h2>
-      <ul class="nav flex-column">
-        <li class="nav-item mb-2">
-          <a href="/dashboard" class="nav-link text-white">📊 Dashboard</a>
-        </li>
-        <li class="nav-item mb-2">
-          <a href="/" class="nav-link text-white">🏠 Home</a>
-        </li>
-        {% if session.get('role') in ['admin', 'operator'] %}
-        <li class="nav-item mb-2">
-          <a href="/schedule" class="nav-link text-white">⏰ Schedule</a>
-        </li>
-        {% endif %}
-        {% if session.get('role') == 'admin' %}
-        <li class="nav-item mb-2">
-          <a href="{{ url_for('create_user') }}" class="nav-link text-white">➕ Create User</a>
-        </li>
-        {% endif %}
-        <li class="nav-item mt-4">
-          <a href="{{ url_for('logout') }}" class="nav-link text-white">🚪 Logout</a>
-        </li>
-      </ul>
-    </nav>
-
+    <!-- Sidebar / Navbar -->
+    {% include 'navbar.html' %}
 
     <!-- Main Content -->
     <main class="content p-4 flex-grow-1">
-      <h1 class="mb-4">🗄️ Available Databases</h1>
+      <h1 class="mb-4">🗄️ SQL Servers & Databases</h1>
 
-      <!-- Databases List -->
-      <div class="card shadow-sm">
-        <div class="card-header bg-secondary text-white">Databases</div>
-        <div class="card-body">
-          <ul class="list-group">
-            {% for db in databases %}
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-              <a href="{{ url_for('database_details', db_name=db) }}" class="text-decoration-none">
-                🗄️ {{ db }}
-              </a>
-              <div class="btn-group">
-                <button id="syncBtn-{{ db }}" class="btn btn-sm btn-primary" onclick="runSync('{{ db }}')">
-                  ▶ Run Sync
-                </button>
-                <a href="{{ url_for('schedule_page') }}?db={{ db }}" class="btn btn-sm btn-warning">
-                  ⏰ Schedule
-                </a>
-              </div>
-            </li>
-            {% endfor %}
-          </ul>
+      {% if sqlservers %}
+        {% for server_name, databases in sqlservers.items() %}
+          <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+              🖥️ {{ server_name }}
+            </div>
+            <div class="card-body">
+              {% if databases %}
+                <ul class="list-group">
+                  {% for db in databases %}
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <a href="{{ url_for('database_details', db_name=db) }}" class="text-decoration-none">
+                      🗄️ {{ db }}
+                    </a>
+                    <div class="btn-group">
+                      <button id="syncBtn-{{ db }}" class="btn btn-sm btn-primary" onclick="runSync('{{ db }}')">
+                        ▶ Run Sync
+                      </button>
+                      <a href="{{ url_for('schedule_page') }}?db={{ db }}" class="btn btn-sm btn-warning">
+                        ⏰ Schedule
+                      </a>
+                    </div>
+                  </li>
+                  {% endfor %}
+                </ul>
+              {% else %}
+                <p>No databases found for this server.</p>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="alert alert-warning">
+          No SQL servers configured. Please add a server via <a href="{{ url_for('manage_servers_page') }}">Manage Servers</a>.
         </div>
-      </div>
+      {% endif %}
 
       <!-- Sync Output -->
       <div class="card shadow-sm mt-4">
