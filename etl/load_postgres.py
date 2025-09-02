@@ -15,7 +15,7 @@ logging.basicConfig(
     ]
 )
 
-CONFIG_PATH = os.path.join(os.path.dirname(__file__), '../config/db_connections.yaml')
+CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'db_connections.yaml')
 EXPORT_DIR = os.path.join(os.path.dirname(__file__), '../data/sqlserver_exports/')
 
 with open(CONFIG_PATH, 'r') as f:

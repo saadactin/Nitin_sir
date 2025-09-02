@@ -41,16 +41,23 @@ SYNC_CONFIG = {
 pg_conf = config['postgresql']
 
 def get_sql_connection(conf, database=None):
-    """Get connection to SQL Server"""
-    conn_str = (
-        f"DRIVER={{ODBC Driver 17 for SQL Server}};"
-        f"SERVER={conf['server']};"
-        f"UID={conf['username']};"
-        f"PWD={conf['password']}"
-    )
-    if database:
-        conn_str += f";DATABASE={database}"
-    return pyodbc.connect(conn_str)
+    """Get connection to SQL Server with optional database"""
+    try:
+        conn_str = (
+            f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+            f"SERVER={conf['server']},{conf.get('port', 1433)};"
+            f"UID={conf['username']};"
+            f"PWD={conf['password']};"
+            "Encrypt=no;"
+            "TrustServerCertificate=yes;"
+        )
+        if database:
+            conn_str += f";DATABASE={database}"
+        conn = pyodbc.connect(conn_str, timeout=5)
+        return conn
+    except pyodbc.Error as e:
+        logging.error(f"❌ Connection failed: {e}")
+        raise
 
 def get_pg_engine():
     """Get PostgreSQL engine"""

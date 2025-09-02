@@ -2,9 +2,9 @@ import pyodbc
 
 SQL_SERVERS = {
     "server1": {
-        "server": "localhost",
+        "server": "192.168.18.161",
         "username": "SA",
-        "password": "root",
+        "password": "123",
     }
 }
 
