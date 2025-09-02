@@ -1,21 +1,14 @@
 sqlservers:
   server1:
     server: localhost
+    port: 1433
     username: SA
     password: root
-    sync_mode: "hybrid"  # 'full', 'incremental', or 'hybrid'
-    check_new_databases: true  # Discover new databases
-    skip_databases:  # Optional - if empty, migrate ALL user databases
+    sync_mode: "hybrid"
+    check_new_databases: true
+    skip_databases:
       - Emc_migrationTest2
-      - Emc_migrationTest3
-      - Emc_migrationTest4
-      - Emc_migrationTest5
-      - Emc_migrationTest6
-      - Emc_migrationTest7
-      - HelpDesk_30032022
-      - Sicoma_08Mar2025_Final
-      - VTS_06Mar2025_Final
-    
+
   # server2:
   #   server: KVM-Arch\SQLEXPRESS
   #   username: Bcp

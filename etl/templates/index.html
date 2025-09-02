@@ -12,31 +12,7 @@
 <body>
   <div class="d-flex">
     <!-- Sidebar -->
-    <nav class="sidebar bg-dark text-white p-3">
-      <h2 class="h5 mb-4">⚡ Migration Control</h2>
-      <ul class="nav flex-column">
-        <li class="nav-item mb-2">
-          <a href="/dashboard" class="nav-link text-white">📊 Dashboard</a>
-        </li>
-        <li class="nav-item mb-2">
-          <a href="/" class="nav-link text-white">🏠 Home</a>
-        </li>
-        {% if session.get('role') in ['admin', 'operator'] %}
-        <li class="nav-item mb-2">
-          <a href="/schedule" class="nav-link text-white">⏰ Schedule</a>
-        </li>
-        {% endif %}
-        {% if session.get('role') == 'admin' %}
-        <li class="nav-item mb-2">
-          <a href="{{ url_for('create_user') }}" class="nav-link text-white">➕ Create User</a>
-        </li>
-        {% endif %}
-        <li class="nav-item mt-4">
-          <a href="{{ url_for('logout') }}" class="nav-link text-white">🚪 Logout</a>
-        </li>
-      </ul>
-    </nav>
-
+    {% include 'navbar.html' %}
     <!-- Main Content -->
     <main class="content p-4 flex-grow-1">
       <!-- PostgreSQL Connection -->
@@ -47,7 +23,7 @@
         </div>
       </div>
 
-      <!-- Databases -->
+      <!-- Databases
       <div class="card shadow-sm mb-4">
         <div class="card-header bg-secondary text-white">Available Databases</div>
         <div class="card-body">
@@ -55,14 +31,12 @@
             {% for db in databases %}
               <li class="list-group-item d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center gap-2">
-                  <!-- Status badge -->
                   {% if db_status[db] == 'up' %}
                     <span class="badge bg-success">Up</span>
                   {% else %}
                     <span class="badge bg-danger">Down</span>
                   {% endif %}
 
-                  <!-- Database link -->
                   <a href="{{ url_for('database_details', db_name=db) }}" class="text-decoration-none">
                     🗄️ {{ db }}
                   </a>
@@ -82,7 +56,7 @@
             {% endfor %}
           </ul>
         </div>
-      </div>
+      </div> -->
 
       <!-- Sync Output -->
       <div class="card shadow-sm">
