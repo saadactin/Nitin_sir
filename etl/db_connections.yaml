@@ -23,3 +23,11 @@ sqlservers:
     skip_databases: []
     sync_mode: hybrid
     username: sa
+  servervikas:
+    check_new_databases: true
+    password: root
+    port: '1433'
+    server: 192.168.18.124
+    skip_databases: []
+    sync_mode: hybrid
+    username: sa
