@@ -23,38 +23,58 @@
         <div class="card-body">
           <form id="scheduleForm">
             <div class="row mb-3">
+              <!-- Server -->
               <div class="col-md-4">
                 <label class="form-label">SQL Server</label>
-                <select class="form-select" name="server" required>
-                  {% for server in sqlservers.keys() %}
+                <select class="form-select" name="server" id="server" required>
+                  {% for server, dbs in sqlservers.items() %}
                     <option value="{{ server }}">{{ server }}</option>
                   {% endfor %}
                 </select>
               </div>
+
+              <!-- Sync Scope -->
               <div class="col-md-4">
-                <label class="form-label">Database</label>
-                <input type="text" name="database" class="form-control" placeholder="Database name" required>
+                <label class="form-label">Sync Scope</label>
+                <select id="targetType" name="targetType" class="form-select" required>
+                  <option value="server">Whole Server</option>
+                  <option value="database">Single Database</option>
+                </select>
               </div>
-              <div class="col-md-4">
-                <label class="form-label">Schedule Type</label>
-                <select class="form-select" name="type" id="scheduleType">
-                  <option value="interval">Every X minutes/hours</option>
-                  <option value="cron">Specific time</option>
+
+              <!-- Database dropdown (hidden by default) -->
+              <div class="col-md-4" id="databaseGroup" style="display:none;">
+                <label class="form-label">Database</label>
+                <select id="database" name="database" class="form-select">
+                  {% for server, dbs in sqlservers.items() %}
+                    {% for db in dbs %}
+                      <option value="{{ db }}" data-server="{{ server }}">{{ db }}</option>
+                    {% endfor %}
+                  {% endfor %}
                 </select>
               </div>
             </div>
 
-            <div id="intervalFields" class="row mb-3">
-              <div class="col-md-6">
-                <label class="form-label">Every (minutes)</label>
-                <input type="number" name="minutes" class="form-control" min="1" value="60">
+            <div class="row mb-3">
+              <!-- Schedule Type -->
+              <div class="col-md-4">
+                <label class="form-label">Schedule Type</label>
+                <select class="form-select" name="type" id="scheduleType">
+                  <option value="interval">Every X minutes</option>
+                  <option value="daily">Daily at specific time</option>
+                </select>
               </div>
-            </div>
 
-            <div id="cronFields" class="row mb-3" style="display:none;">
-              <div class="col-md-6">
+              <!-- Interval Fields -->
+              <div class="col-md-4" id="intervalGroup">
+                <label class="form-label">Every (minutes)</label>
+                <input type="number" name="minutes" id="minutes" class="form-control" min="1" value="60">
+              </div>
+
+              <!-- Daily Fields -->
+              <div class="col-md-4" id="dailyGroup" style="display:none;">
                 <label class="form-label">Time (HH:MM, 24h)</label>
-                <input type="time" name="time" class="form-control">
+                <input type="time" name="time" id="time" class="form-control" value="02:00">
               </div>
             </div>
 
@@ -81,7 +101,7 @@
               {% for job in schedules %}
                 <tr>
                   <td>{{ job.server }}</td>
-                  <td>{{ job.database }}</td>
+                  <td>{{ job.database or "ALL DATABASES" }}</td>
                   <td>{{ job.type }}</td>
                   <td>{{ job.details }}</td>
                   <td>
@@ -97,21 +117,37 @@
   </div>
 
   <script>
-    // Toggle between interval & cron fields
-    document.getElementById("scheduleType").addEventListener("change", function() {
-      if (this.value === "interval") {
-        document.getElementById("intervalFields").style.display = "flex";
-        document.getElementById("cronFields").style.display = "none";
+    // Toggle database dropdown based on Sync Scope
+    document.getElementById("targetType").addEventListener("change", function() {
+      if (this.value === "database") {
+        document.getElementById("databaseGroup").style.display = "block";
       } else {
-        document.getElementById("intervalFields").style.display = "none";
-        document.getElementById("cronFields").style.display = "flex";
+        document.getElementById("databaseGroup").style.display = "none";
+        document.getElementById("database").value = ""; // reset
       }
     });
 
-    // Add new schedule
+    // Toggle interval vs daily input fields
+    document.getElementById("scheduleType").addEventListener("change", function() {
+      if (this.value === "interval") {
+        document.getElementById("intervalGroup").style.display = "block";
+        document.getElementById("dailyGroup").style.display = "none";
+      } else {
+        document.getElementById("intervalGroup").style.display = "none";
+        document.getElementById("dailyGroup").style.display = "block";
+      }
+    });
+
+    // Submit new schedule
     document.getElementById("scheduleForm").addEventListener("submit", async function(e) {
       e.preventDefault();
       const formData = new FormData(this);
+
+      // If "Whole Server" selected, remove database field
+      if (formData.get("targetType") === "server") {
+        formData.set("database", "");
+      }
+
       const res = await fetch("/api/schedule/add", {
         method: "POST",
         body: formData

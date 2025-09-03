@@ -97,6 +97,52 @@ def get_sql_servers_and_databases() -> dict:
             logging.error(f"❌ Cannot connect to {server_host}: {e}")
     return result
 
+def schedule_job(job_id, server, database=None, interval=None, run_time=None):
+    """Schedule a sync job (whole server or single database)."""
+
+    def job_loop():
+        logging.info(f"[JOB {job_id}] Started for {server}/{database or 'ALL'}")
+        while not stop_flags.get(job_id, False):
+            if interval:
+                # Run job immediately, then wait
+                if database:
+                    run_sync(server, database)   # single DB sync
+                else:
+                    logging.info(f"[JOB {job_id}] Running whole server sync: {server}")
+                    subprocess.run(
+                        [sys.executable, os.path.join(os.path.dirname(__file__), "hybrid_sync.py")],
+                        env={**os.environ, "SELECTED_SERVER": server},
+                        capture_output=True,
+                        text=True
+                    )
+                time.sleep(interval)
+
+            elif run_time:
+                # Wait until the next target time of day
+                now = time.localtime()
+                target_seconds = run_time[0] * 3600 + run_time[1] * 60
+                current_seconds = now.tm_hour * 3600 + now.tm_min * 60 + now.tm_sec
+                sleep_time = (target_seconds - current_seconds) % (24 * 3600)
+                if sleep_time > 0:
+                    time.sleep(sleep_time)
+
+                if not stop_flags.get(job_id, False):
+                    if database:
+                        run_sync(server, database)
+                    else:
+                        logging.info(f"[JOB {job_id}] Running whole server sync: {server}")
+                        subprocess.run(
+                            [sys.executable, os.path.join(os.path.dirname(__file__), "hybrid_sync.py")],
+                            env={**os.environ, "SELECTED_SERVER": server},
+                            capture_output=True,
+                            text=True
+                        )
+        logging.info(f"[JOB {job_id}] Stopped")
+
+    t = threading.Thread(target=job_loop, daemon=True)
+    t.start()
+
+
 # ---------------- Run Sync ----------------
 def run_sync(server, database):
     """Execute hybrid_sync.py for a given server/database."""
@@ -248,8 +294,12 @@ def database_details(db_name):
 @app.route("/schedule")
 @login_required(roles=["admin", "operator"])
 def schedule_page():
-    sqlservers = get_sql_servers_and_databases()
-    return render_template("schedule.html", sqlservers=sqlservers, schedules=list(schedules.values()))
+    servers = get_sql_servers_and_databases()  # get dict of servers→databases
+    return render_template(
+        "schedule.html",
+        sqlservers=servers,
+        schedules=schedules
+    )
 
 @app.route("/home")
 def home():
@@ -259,30 +309,38 @@ def home():
 @app.route("/api/schedule/add", methods=["POST"])
 @login_required(roles=["admin", "operator"])
 def add_schedule():
+    """Add a new schedule for whole server or single database."""
     server = request.form["server"]
-    database = request.form["database"]
+    database = request.form.get("database")  # optional
     sched_type = request.form["type"]
     job_id = str(uuid.uuid4())
 
     stop_flags[job_id] = False
+
     if sched_type == "interval":
         minutes = int(request.form.get("minutes", 60))
         schedules[job_id] = {
-            "id": job_id, "server": server, "database": database,
-            "type": "interval", "details": f"Every {minutes} minutes"
+            "id": job_id,
+            "server": server,
+            "database": database,
+            "type": "interval",
+            "details": f"Every {minutes} minutes"
         }
         schedule_job(job_id, server, database, interval=minutes * 60)
-    else:
+
+    elif sched_type == "daily":
         time_str = request.form.get("time", "02:00")
         hour, minute = map(int, time_str.split(":"))
         schedules[job_id] = {
-            "id": job_id, "server": server, "database": database,
-            "type": "daily", "details": f"Daily at {time_str}"
+            "id": job_id,
+            "server": server,
+            "database": database,
+            "type": "daily",
+            "details": f"Daily at {time_str}"
         }
         schedule_job(job_id, server, database, run_time=(hour, minute))
 
     return jsonify({"status": "ok", "job_id": job_id})
-
 @app.route("/api/schedule/delete/<job_id>", methods=["DELETE"])
 @login_required(roles=["admin", "operator"])
 def delete_schedule(job_id):

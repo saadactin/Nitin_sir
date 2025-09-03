@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Migration Control - Alerts</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Custom CSS -->
+  <link href="/static/css/migration.css" rel="stylesheet">
+  <style>
+    .alert-card {
+      border-left: 6px solid;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      background-color: #fff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+    .alert-high {
+      border-color: #dc3545; /* red */
+    }
+    .alert-medium {
+      border-color: #ffc107; /* yellow */
+    }
+    .alert-low {
+      border-color: #6c757d; /* gray */
+    }
+    .alert-meta {
+      font-size: 0.85rem;
+      color: #6c757d;
+    }
+    .alert-message {
+      margin-top: 0.5rem;
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="d-flex">
+    <!-- Sidebar -->
+    {% include 'navbar.html' %}
+
+    <!-- Main Content -->
+    <main class="content p-4 flex-grow-1">
+      <!-- Alerts Section -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-danger text-white">⚠ Alerts</div>
+        <div class="card-body">
+          {% if alerts %}
+            {% for alert in alerts %}
+              <div class="alert-card 
+                  {% if alert.severity == 'high' %}alert-high
+                  {% elif alert.severity == 'medium' %}alert-medium
+                  {% else %}alert-low{% endif %}">
+                
+                <!-- Title and Severity -->
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <span class="badge {% if alert.severity == 'high' %}bg-danger
+                                        {% elif alert.severity == 'medium' %}bg-warning text-dark
+                                        {% else %}bg-secondary{% endif %}">
+                      {{ alert.severity|capitalize }}
+                    </span>
+                    <strong class="ms-2">{{ alert.alert_type }}</strong>
+                  </div>
+                  <span class="text-muted small">{{ alert.alert_timestamp }}</span>
+                </div>
+
+                <!-- Metadata -->
+                <div class="alert-meta mt-1">
+                  🖥️ {{ alert.server_name }}  
+                  | 🗄️ {{ alert.database_name }}  
+                  | 📂 {{ alert.schema_name }}  
+                  | 📑 {{ alert.table_name }}
+                </div>
+
+                <!-- Message -->
+                <p class="alert-message mb-0">{{ alert.message }}</p>
+              </div>
+            {% endfor %}
+          {% else %}
+            <p class="text-muted mb-0">✅ No alerts to display.</p>
+          {% endif %}
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
