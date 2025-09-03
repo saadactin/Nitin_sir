@@ -31,10 +31,13 @@
                   {% endfor %}
                 </select>
               </div>
-              <div class="col-md-4">
-                <label class="form-label">Database</label>
-                <input type="text" name="database" class="form-control" placeholder="Database name" required>
-              </div>
+            <div class="col-md-4">
+  <label class="form-label">Database</label>
+  <select class="form-select" name="database" id="databaseSelect" required>
+    <option value="">Select a database</option>
+  </select>
+</div>
+
               <div class="col-md-4">
                 <label class="form-label">Schedule Type</label>
                 <select class="form-select" name="type" id="scheduleType">
@@ -95,35 +98,93 @@
       </div>
     </main>
   </div>
+<script>
+  // ---------------- Fetch Databases for a Selected Server ----------------
+  async function fetchDatabases(serverName) {
+    const dbSelect = document.getElementById("databaseSelect");
+    dbSelect.innerHTML = '<option value="">Loading...</option>';
 
-  <script>
-    // Toggle between interval & cron fields
-    document.getElementById("scheduleType").addEventListener("change", function() {
-      if (this.value === "interval") {
-        document.getElementById("intervalFields").style.display = "flex";
-        document.getElementById("cronFields").style.display = "none";
-      } else {
-        document.getElementById("intervalFields").style.display = "none";
-        document.getElementById("cronFields").style.display = "flex";
-      }
-    });
+    try {
+      const res = await fetch(`/api/databases/${serverName}`);
+      if (!res.ok) throw new Error("Failed to fetch databases");
 
-    // Add new schedule
-    document.getElementById("scheduleForm").addEventListener("submit", async function(e) {
-      e.preventDefault();
-      const formData = new FormData(this);
+      const data = await res.json();
+      dbSelect.innerHTML = '<option value="">Select a database</option>';
+      data.forEach(db => {
+        const option = document.createElement("option");
+        option.value = db.name;
+        option.textContent = db.name;
+        dbSelect.appendChild(option);
+      });
+    } catch (err) {
+      dbSelect.innerHTML = '<option value="">Error loading databases</option>';
+      console.error(err);
+    }
+  }
+
+  // Listen for server selection change
+  const serverSelect = document.querySelector('select[name="server"]');
+  serverSelect.addEventListener("change", function () {
+    const server = this.value;
+    if (server) {
+      fetchDatabases(server);
+    } else {
+      const dbSelect = document.getElementById("databaseSelect");
+      dbSelect.innerHTML = '<option value="">Select a database</option>';
+    }
+  });
+
+  // Auto-load databases for initially selected server
+  window.addEventListener("DOMContentLoaded", function () {
+    if (serverSelect.value) {
+      fetchDatabases(serverSelect.value);
+    }
+  });
+
+  // ---------------- Toggle Interval / Cron Fields ----------------
+  document.getElementById("scheduleType").addEventListener("change", function () {
+    if (this.value === "interval") {
+      document.getElementById("intervalFields").style.display = "flex";
+      document.getElementById("cronFields").style.display = "none";
+    } else {
+      document.getElementById("intervalFields").style.display = "none";
+      document.getElementById("cronFields").style.display = "flex";
+    }
+  });
+
+  // ---------------- Add New Schedule ----------------
+  document.getElementById("scheduleForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+
+    try {
       const res = await fetch("/api/schedule/add", {
         method: "POST",
         body: formData
       });
-      if (res.ok) location.reload();
-    });
+      if (res.ok) {
+        location.reload();
+      } else {
+        const data = await res.json();
+        alert("Error adding schedule: " + (data.error || "Unknown error"));
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error adding schedule: " + err.message);
+    }
+  });
 
-    // Delete schedule
-    async function deleteSchedule(jobId) {
+  // ---------------- Delete Schedule ----------------
+  async function deleteSchedule(jobId) {
+    try {
       await fetch(`/api/schedule/delete/${jobId}`, { method: "DELETE" });
       location.reload();
+    } catch (err) {
+      console.error(err);
+      alert("Error deleting schedule: " + err.message);
     }
-  </script>
+  }
+</script>
+
 </body>
 </html>

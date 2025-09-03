@@ -52,9 +52,9 @@ def resolve_config_path():
     """Find db_connections.yaml from known locations."""
     candidates = [
         os.environ.get("DB_CONFIG_PATH"),
-        os.path.normpath(os.path.join(os.path.dirname(__file__), "../config/db_connections.yaml")),
+        os.path.normpath(os.path.join(os.path.dirname(__file__), "db_connections.yaml")),
         os.path.normpath(os.path.join(os.path.dirname(__file__), "config/db_connections.yaml")),
-        r"C:\Nitin_sir\config\db_connections.yaml",
+        r"C:\Nitin_sir\etl\db_connections.yaml",
     ]
     for p in candidates:
         if p and os.path.exists(p):
